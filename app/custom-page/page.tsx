@@ -19,6 +19,7 @@ export default function HomePage() {
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
 
   // Embedded wallet for social login
   const embeddedWallet = createWallet("embedded");
@@ -33,6 +34,16 @@ export default function HomePage() {
 
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Auto-dismiss notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const handleConnectGoogle = async () => {
     try {
@@ -102,6 +113,7 @@ export default function HomePage() {
   const handleGetUserData = async () => {
     try {
       setIsLoadingUserData(true);
+      setNotification(null);
       console.log("Getting user data after social login...");
       console.log("Button clicked successfully!");
       
@@ -116,31 +128,15 @@ export default function HomePage() {
           name: "Social User",
           provider: "social"
         });
+        setNotification("✅ User data retrieved successfully!");
         console.log("User data updated successfully!");
       } else {
         console.log("No account found. Please try logging in again.");
-        // Use a more iframe-friendly notification
-        if (typeof window !== 'undefined' && window.parent !== window) {
-          // We're in an iframe, try to communicate with parent
-          window.parent.postMessage({
-            type: 'notification',
-            message: 'No account found. Please try logging in again.'
-          }, '*');
-        } else {
-          alert("No account found. Please try logging in again.");
-        }
+        setNotification("❌ No account found. Please try logging in again.");
       }
     } catch (error) {
       console.error("Failed to get user data:", error);
-      // Use a more iframe-friendly notification
-      if (typeof window !== 'undefined' && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'notification',
-          message: 'Failed to get user data. Please try logging in again.'
-        }, '*');
-      } else {
-        alert("Failed to get user data. Please try logging in again.");
-      }
+      setNotification("❌ Failed to get user data. Please try logging in again.");
     } finally {
       setIsLoadingUserData(false);
     }
@@ -248,20 +244,7 @@ export default function HomePage() {
               </div>
               
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Button click event triggered!");
-                  handleGetUserData();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  console.log("Button mousedown event triggered!");
-                }}
-                onMouseUp={(e) => {
-                  e.preventDefault();
-                  console.log("Button mouseup event triggered!");
-                }}
+                onClick={handleGetUserData}
                 disabled={isLoadingUserData}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white disabled:text-gray-300 font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 style={{
@@ -285,16 +268,16 @@ export default function HomePage() {
                 )}
               </button>
               
-              {/* Test button for debugging */}
-              <button
-                onClick={() => {
-                  console.log("Test button clicked!");
-                  alert("Test button works!");
-                }}
-                className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
-              >
-                Test Button (Debug)
-              </button>
+              {/* Notification display */}
+              {notification && (
+                <div className={`mt-2 p-2 rounded text-xs ${
+                  notification.includes('✅') 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {notification}
+                </div>
+              )}
             </div>
           )}
 
