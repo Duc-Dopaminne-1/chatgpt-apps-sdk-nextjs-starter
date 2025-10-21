@@ -12,15 +12,15 @@ const client = createThirdwebClient({
   clientId: '653735974139d2d7320b290660b79654',
 });
 
+// ✅ Fix 1: Dùng 1 instance ví, không tạo lại mỗi render
+const embeddedWallet = createWallet("embedded");
+
 export default function HomePage() {
   const { isConnecting, connect } = useConnectModal();
   const account = useActiveAccount();
   const [isMobile, setIsMobile] = useState(false);
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
-
-  // Embedded wallet for social login
-  const embeddedWallet = createWallet("embedded");
 
   useEffect(() => {
     const checkMobile = () => {
@@ -33,30 +33,37 @@ export default function HomePage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // ✅ Fix 2: Dùng redirect callback + postMessage để "trả kết quả" về tab gốc
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      // Nên kiểm tra origin thực tế của bạn
+      if (typeof e.data !== "object" || !e.data) return;
+      if (e.data.type === "thirdweb-login-success") {
+        const { address, email, name, provider } = e.data.payload || {};
+        setUserInfo({ email, name, provider, address });
+        setIsConnectingWallet(false);
+        console.log("Logged in address:", address);
+        console.log("User info:", { email, name, provider });
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
   const handleConnectGoogle = async () => {
     try {
       setIsConnectingWallet(true);
       
-      // Connect with Google using embedded wallet
+      // Connect with Google using embedded wallet với redirectUrl
       await embeddedWallet.connect({
-        client: client,
+        client,
         strategy: "google",
+        // ⚠️ chuyển hướng đến callback của bạn
+        redirectUrl: `${window.location.origin}/auth/callback?provider=google`,
       });
-
-      // Get account after connection
-      const connectedAccount = await embeddedWallet.getAccount();
-      
-      setUserInfo({
-        email: "user@example.com", // This would come from the auth response
-        name: "Google User",
-        provider: "google"
-      });
-      
-      console.log("Connected account:", connectedAccount);
-      
+      // Lúc này trình duyệt sẽ mở tab/ popup → callback sẽ gửi dữ liệu về
     } catch (error) {
       console.error("Google connection failed:", error);
-    } finally {
       setIsConnectingWallet(false);
     }
   };
@@ -65,26 +72,14 @@ export default function HomePage() {
     try {
       setIsConnectingWallet(true);
       
-      // Connect with Apple using embedded wallet
+      // Connect with Apple using embedded wallet với redirectUrl
       await embeddedWallet.connect({
-        client: client,
+        client,
         strategy: "apple",
+        redirectUrl: `${window.location.origin}/auth/callback?provider=apple`,
       });
-
-      // Get account after connection
-      const connectedAccount = await embeddedWallet.getAccount();
-      
-      setUserInfo({
-        email: "user@icloud.com", // This would come from the auth response
-        name: "Apple User",
-        provider: "apple"
-      });
-      
-      console.log("Connected account:", connectedAccount);
-      
     } catch (error) {
       console.error("Apple connection failed:", error);
-    } finally {
       setIsConnectingWallet(false);
     }
   };
@@ -120,11 +115,13 @@ export default function HomePage() {
                 </h3>
               </div>
               <div className="space-y-2 text-sm text-green-800 dark:text-green-200">
-                {account && <p><strong>Address:</strong> {account.address}</p>}
+                {(account || userInfo?.address) && (
+                  <p><strong>Address:</strong> {account?.address || userInfo?.address}</p>
+                )}
                 {userInfo && (
                   <>
-                    <p><strong>Email:</strong> {userInfo.email}</p>
-                    <p><strong>Name:</strong> {userInfo.name}</p>
+                    {userInfo.email && <p><strong>Email:</strong> {userInfo.email}</p>}
+                    {userInfo.name && <p><strong>Name:</strong> {userInfo.name}</p>}
                     <p><strong>Provider:</strong> {userInfo.provider}</p>
                   </>
                 )}
