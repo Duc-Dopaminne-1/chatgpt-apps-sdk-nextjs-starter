@@ -52,7 +52,7 @@ export default function HomePage() {
   // Check for existing login data on component mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     // Check localStorage for any existing login data
     const checkExistingLogin = () => {
       try {
@@ -67,14 +67,14 @@ export default function HomePage() {
         console.log("No existing login data found");
       }
     };
-    
+
     // Check URL parameters for login success
     const checkUrlParams = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const loginSuccess = urlParams.get('login');
       const address = urlParams.get('address');
       const provider = urlParams.get('provider');
-      
+
       if (loginSuccess === 'success' && address) {
         const userData = {
           address: address,
@@ -82,22 +82,22 @@ export default function HomePage() {
           name: "Social User",
           provider: provider || "social"
         };
-        
+
         setUserInfo(userData);
         localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
         setNotification("✅ Login data retrieved from URL!");
-        
+
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (loginSuccess === 'error') {
         const error = urlParams.get('error');
         setNotification(`❌ Login failed: ${error || 'Unknown error'}`);
-        
+
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
-    
+
     checkExistingLogin();
     checkUrlParams();
   }, []);
@@ -112,7 +112,7 @@ export default function HomePage() {
 
       const url = new URL(a.href, window.location.href);
       const appOrigin = window.location.origin;
-      
+
       // Check if it's an external link
       if (
         url.origin !== window.location.origin &&
@@ -132,7 +132,7 @@ export default function HomePage() {
 
     // Use capture phase to intercept before Next.js Link components
     window.addEventListener("click", handleClick, true);
-    
+
     return () => {
       window.removeEventListener("click", handleClick, true);
     };
@@ -142,14 +142,14 @@ export default function HomePage() {
     try {
       setIsConnectingWallet(true);
       console.log("Connecting with email...");
-      
+
       await connect({
         client: client,
         wallets: [iaWallet],
       });
-      
+
       console.log("Email connection initiated");
-      
+
       // Try to get account after connection
       setTimeout(async () => {
         try {
@@ -163,12 +163,12 @@ export default function HomePage() {
               provider: "email"
             };
             setUserInfo(userData);
-            
+
             // Save to localStorage
             if (typeof window !== 'undefined') {
               localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
             }
-            
+
             setNotification("✅ Email login successful!");
           }
         } catch (error) {
@@ -176,7 +176,7 @@ export default function HomePage() {
           setNotification("❌ Failed to get account. Please try again.");
         }
       }, 2000);
-      
+
     } catch (error) {
       console.error("Email connection failed:", error);
       setNotification("❌ Email login failed. Please try again.");
@@ -189,14 +189,14 @@ export default function HomePage() {
     try {
       setIsConnectingWallet(true);
       console.log("Connecting with Google...");
-      
+
       await connect({
         client: client,
         wallets: [iaWallet],
       });
-      
+
       console.log("Google connection initiated");
-      
+
       // Try to get account after connection
       setTimeout(async () => {
         try {
@@ -210,12 +210,12 @@ export default function HomePage() {
               provider: "google"
             };
             setUserInfo(userData);
-            
+
             // Save to localStorage
             if (typeof window !== 'undefined') {
               localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
             }
-            
+
             setNotification("✅ Google login successful!");
           }
         } catch (error) {
@@ -223,7 +223,7 @@ export default function HomePage() {
           setNotification("❌ Failed to get account. Please try again.");
         }
       }, 2000);
-      
+
     } catch (error) {
       console.error("Google connection failed:", error);
       setNotification("❌ Google login failed. Please try again.");
@@ -246,12 +246,54 @@ export default function HomePage() {
   };
 
   const handleGetUserData = async () => {
+    const appOrigin = window.location.origin;
+
+    window.addEventListener(
+        "click",
+        (e) => {
+          const a = (e?.target as HTMLElement)?.closest("a");
+          if (!a || !a.href) return;
+
+          const url = new URL(a.href, window.location.href);
+
+          // Nếu là link ngoài (khác origin hiện tại)
+          if (url.origin !== window.location.origin && url.origin !== appOrigin) {
+            try {
+              if (window.openai) {
+                // Dùng API của OpenAI client để mở link ngoài
+                window.openai.openExternal({ href: a.href });
+                e.preventDefault();
+              } else {
+                // Fallback: mở link bằng tab mới trong trình duyệt
+                window.open(a.href, "_blank", "noopener,noreferrer");
+                e.preventDefault();
+              }
+            } catch (err) {
+              console.warn("openExternal failed, fallback to window.open", err);
+              window.open(a.href, "_blank", "noopener,noreferrer");
+              e.preventDefault();
+            }
+          }
+        },
+        true // Capture phase
+    );
+
+// Ví dụ: thêm link để thử
+    const link = document.createElement("a");
+    link.href = "https://www.youtube.com/";
+    link.textContent = "Mở YouTube";
+    link.style.fontSize = "20px";
+    link.style.display = "block";
+    link.style.margin = "20px";
+    document.body.appendChild(link);
+
+
     try {
       setIsLoadingUserData(true);
       setNotification(null);
       console.log("Getting user data after social login...");
       console.log("Button clicked successfully!");
-      
+
       // First, try to get from localStorage (in case login happened in another tab)
       const existingData = localStorage.getItem('thirdweb-login-data');
       if (existingData) {
@@ -266,20 +308,20 @@ export default function HomePage() {
           console.log("Failed to parse existing data");
         }
       }
-      
+
       // Create a timeout promise to prevent infinite waiting
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout: No response from wallet')), 10000); // 10 seconds timeout
       });
-      
+
       // Try to get account from in-app wallet with timeout
       const connectedAccount = await Promise.race([
         iaWallet.getAccount(),
         timeoutPromise
       ]) as any;
-      
+
       console.log("Retrieved account:", connectedAccount);
-      
+
       if (connectedAccount && typeof connectedAccount === 'object' && 'address' in connectedAccount && connectedAccount.address) {
         const userData = {
           address: connectedAccount.address,
@@ -287,14 +329,14 @@ export default function HomePage() {
           name: "Social User",
           provider: "social"
         };
-        
+
         setUserInfo(userData);
-        
+
         // Save to localStorage for persistence
         if (typeof window !== 'undefined') {
           localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
         }
-        
+
         setNotification("✅ User data retrieved successfully!");
         console.log("User data updated successfully!");
       } else {
@@ -303,7 +345,7 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error("Failed to get user data:", error);
-      
+
       // Check if it's a timeout error
       if (error instanceof Error && error.message.includes('Timeout')) {
         setNotification("⏰ Login timeout. Please try logging in again or check if popup was blocked.");
@@ -422,13 +464,13 @@ export default function HomePage() {
               <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
                 If you've already logged in with Google/Email in another tab, click below to retrieve your data.
               </p>
-              
+
               {/* Debug info for iframe */}
               <div className="text-xs text-blue-600 dark:text-blue-400 mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded">
                 <p><strong>Environment:</strong> {typeof window !== 'undefined' && window.parent !== window ? 'In iframe' : 'Standalone'}</p>
                 <p><strong>Button Status:</strong> {isLoadingUserData ? 'Loading...' : 'Ready'}</p>
               </div>
-              
+
               <button
                 onClick={handleGetUserData}
                 disabled={isLoadingUserData}
@@ -453,7 +495,7 @@ export default function HomePage() {
                   </>
                 )}
               </button>
-              
+
               {/* Notification display */}
               {notification && (
                 <div className={`mt-2 p-2 rounded text-xs ${
@@ -466,7 +508,7 @@ export default function HomePage() {
                   {notification}
                 </div>
               )}
-              
+
               {/* Action buttons */}
               <div className="mt-2 flex gap-2">
                 <button
@@ -490,7 +532,7 @@ export default function HomePage() {
                 >
                   Check localStorage
                 </button>
-                
+
                 <button
                   onClick={() => {
                     if (typeof window !== 'undefined') {
@@ -504,13 +546,13 @@ export default function HomePage() {
                   Clear Data
                 </button>
               </div>
-              
+
             </div>
           )}
 
           {/* Navigation */}
           <div className="flex gap-4 items-center flex-col sm:flex-row w-full">
-        <Link 
+        <Link
           href="/"
                 className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
         >
