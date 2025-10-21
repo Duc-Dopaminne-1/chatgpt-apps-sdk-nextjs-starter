@@ -13,38 +13,67 @@ export default function ThirdwebCallbackPage() {
   useEffect(() => {
     (async () => {
       try {
+        console.log("Callback page loaded");
         const params = new URLSearchParams(window.location.search);
         const provider = params.get("provider") || "unknown";
         
+        console.log("Provider:", provider);
+        console.log("Window opener:", window.opener);
+        
         // Khôi phục phiên sau redirect với strategy tương ứng
+        console.log("Connecting wallet...");
         await wallet.connect({ 
           client,
           strategy: provider as "google" | "apple"
         });
 
+        console.log("Wallet connected, getting account...");
         const account = await wallet.getAccount(); // địa chỉ ví
+        console.log("Account:", account);
+        
         // Tùy phiên bản SDK, bạn có thể có thêm API để lấy email/name nếu bạn bật "Auth + OIDC"
         // ví dụ: const user = await wallet.getUser(); (nếu có)
 
-        window.opener?.postMessage(
-          {
-            type: "thirdweb-login-success",
-            payload: {
-              address: account?.address,
-              // Nếu bạn có cách lấy email/name từ SDK/BE, gán vào đây
-              email: undefined,
-              name: undefined,
-              provider,
-            },
+        const message = {
+          type: "thirdweb-login-success",
+          payload: {
+            address: account?.address,
+            // Nếu bạn có cách lấy email/name từ SDK/BE, gán vào đây
+            email: undefined,
+            name: undefined,
+            provider,
           },
-          "*" // tốt nhất thay "*" bằng origin của trang gốc
-        );
+        };
 
-        window.close();
+        console.log("Sending message to opener:", message);
+        
+        if (window.opener) {
+          window.opener.postMessage(message, "*");
+          console.log("Message sent, closing window...");
+          window.close();
+        } else {
+          console.log("No window opener, redirecting...");
+          // Fallback: redirect về trang chính với thông tin
+          window.location.href = `/?login=success&address=${account?.address}&provider=${provider}`;
+        }
       } catch (e) {
         console.error("Callback error:", e);
-        // Trong trường hợp không có window.opener (bị chặn), có thể redirect về "/" kèm query
-        // location.replace(`/?login=success`);
+        
+        const errorMessage = {
+          type: "thirdweb-login-error",
+          payload: {
+            error: e instanceof Error ? e.message : "Unknown error",
+            provider: new URLSearchParams(window.location.search).get("provider") || "unknown"
+          },
+        };
+        
+        if (window.opener) {
+          window.opener.postMessage(errorMessage, "*");
+          window.close();
+        } else {
+          // Fallback: redirect về trang chính với error
+          window.location.href = `/?login=error&error=${encodeURIComponent(errorMessage.payload.error)}`;
+        }
       }
     })();
   }, []);

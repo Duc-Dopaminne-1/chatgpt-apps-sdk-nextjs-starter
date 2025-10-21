@@ -33,35 +33,126 @@ export default function HomePage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Handle fallback redirect từ callback page
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const loginStatus = params.get("login");
+    
+    if (loginStatus === "success") {
+      const address = params.get("address");
+      const provider = params.get("provider");
+      
+      console.log("Login success via redirect:", { address, provider });
+      setUserInfo({ 
+        address, 
+        provider,
+        email: undefined,
+        name: undefined
+      });
+      setIsConnectingWallet(false);
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (loginStatus === "error") {
+      const error = params.get("error");
+      console.log("Login error via redirect:", error);
+      setIsConnectingWallet(false);
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // ✅ Fix 2: Dùng redirect callback + postMessage để "trả kết quả" về tab gốc
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      // Nên kiểm tra origin thực tế của bạn
-      if (typeof e.data !== "object" || !e.data) return;
-      if (e.data.type === "thirdweb-login-success") {
+    const onMsg = async (e: MessageEvent) => {
+      console.log("Received message:", e.data, "from origin:", e.origin);
+      
+      // Kiểm tra origin và data
+      if (typeof e.data !== "object" || !e.data) {
+        console.log("Invalid message data");
+        return;
+      }
+      
+      // Handle Thirdweb OAuth success directly
+      if (e.data.eventType === "oauthSuccessResult") {
+        console.log("Thirdweb OAuth success received!");
+        const authResult = e.data.authResult;
+        if (authResult && authResult.storedToken) {
+          // Try to get account from the embedded wallet
+          try {
+            const account = await embeddedWallet.getAccount();
+            console.log("Got account from OAuth success:", account);
+            setUserInfo({
+              address: account?.address,
+              email: undefined, // Thirdweb doesn't provide email in this flow
+              name: undefined,
+              provider: "oauth"
+            });
+            setIsConnectingWallet(false);
+          } catch (err) {
+            console.error("Error getting account:", err);
+            setIsConnectingWallet(false);
+          }
+        }
+      }
+      // Handle our custom success message
+      else if (e.data.type === "thirdweb-login-success") {
+        console.log("Login success message received!");
         const { address, email, name, provider } = e.data.payload || {};
         setUserInfo({ email, name, provider, address });
         setIsConnectingWallet(false);
         console.log("Logged in address:", address);
         console.log("User info:", { email, name, provider });
+      } 
+      // Handle error messages
+      else if (e.data.type === "thirdweb-login-error") {
+        console.log("Login error message received:", e.data.payload);
+        setIsConnectingWallet(false);
       }
     };
+    
+    console.log("Setting up message listener...");
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    
+    return () => {
+      console.log("Cleaning up message listener...");
+      window.removeEventListener("message", onMsg);
+    };
   }, []);
 
   const handleConnectGoogle = async () => {
     try {
       setIsConnectingWallet(true);
+      console.log("Starting Google connection...");
       
-      // Connect with Google using embedded wallet với redirectUrl
+      // Connect with Google using embedded wallet (Thirdweb handles OAuth internally)
       await embeddedWallet.connect({
         client,
         strategy: "google",
-        // ⚠️ chuyển hướng đến callback của bạn
-        redirectUrl: `${window.location.origin}/auth/callback?provider=google`,
       });
-      // Lúc này trình duyệt sẽ mở tab/ popup → callback sẽ gửi dữ liệu về
+      
+      console.log("Google connection completed");
+      
+      // Fallback: Try to get account directly after connection
+      setTimeout(async () => {
+        try {
+          const account = await embeddedWallet.getAccount();
+          if (account?.address) {
+            console.log("Fallback: Got account directly:", account);
+            setUserInfo({
+              address: account.address,
+              email: undefined,
+              name: undefined,
+              provider: "google"
+            });
+            setIsConnectingWallet(false);
+          }
+        } catch (err) {
+          console.log("Fallback: Could not get account directly:", err);
+        }
+      }, 2000); // Wait 2 seconds for OAuth to complete
+      
     } catch (error) {
       console.error("Google connection failed:", error);
       setIsConnectingWallet(false);
@@ -71,13 +162,35 @@ export default function HomePage() {
   const handleConnectApple = async () => {
     try {
       setIsConnectingWallet(true);
+      console.log("Starting Apple connection...");
       
-      // Connect with Apple using embedded wallet với redirectUrl
+      // Connect with Apple using embedded wallet (Thirdweb handles OAuth internally)
       await embeddedWallet.connect({
         client,
         strategy: "apple",
-        redirectUrl: `${window.location.origin}/auth/callback?provider=apple`,
       });
+      
+      console.log("Apple connection completed");
+      
+      // Fallback: Try to get account directly after connection
+      setTimeout(async () => {
+        try {
+          const account = await embeddedWallet.getAccount();
+          if (account?.address) {
+            console.log("Fallback: Got account directly:", account);
+            setUserInfo({
+              address: account.address,
+              email: undefined,
+              name: undefined,
+              provider: "apple"
+            });
+            setIsConnectingWallet(false);
+          }
+        } catch (err) {
+          console.log("Fallback: Could not get account directly:", err);
+        }
+      }, 2000); // Wait 2 seconds for OAuth to complete
+      
     } catch (error) {
       console.error("Apple connection failed:", error);
       setIsConnectingWallet(false);
@@ -176,6 +289,55 @@ export default function HomePage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Debug Section */}
+        <div className="w-full bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+            Debug Info
+          </h3>
+          <div className="text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
+            <p><strong>Window opener:</strong> {typeof window.opener !== 'undefined' ? 'Available' : 'Not available'}</p>
+            <p><strong>Current URL:</strong> {typeof window !== 'undefined' ? window.location.href : 'N/A'}</p>
+            <p><strong>User Agent:</strong> {typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'N/A'}</p>
+            <p><strong>Is Connecting:</strong> {isConnectingWallet ? 'Yes' : 'No'}</p>
+            <p><strong>User Info:</strong> {userInfo ? JSON.stringify(userInfo, null, 2) : 'None'}</p>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => {
+                console.log("Testing postMessage...");
+                window.postMessage({
+                  type: "thirdweb-login-success",
+                  payload: {
+                    address: "0x1234567890abcdef",
+                    email: "test@example.com",
+                    name: "Test User",
+                    provider: "test"
+                  }
+                }, "*");
+              }}
+              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs"
+            >
+              Test PostMessage
+            </button>
+            <button
+              onClick={() => {
+                console.log("Testing OAuth success...");
+                window.postMessage({
+                  eventType: "oauthSuccessResult",
+                  authResult: {
+                    storedToken: {
+                      jwtToken: "test-token"
+                    }
+                  }
+                }, "*");
+              }}
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs"
+            >
+              Test OAuth Success
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
