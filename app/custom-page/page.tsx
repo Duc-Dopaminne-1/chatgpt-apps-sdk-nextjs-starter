@@ -148,11 +148,11 @@ export default function HomePage() {
       const connectedAccount = await Promise.race([
         embeddedWallet.getAccount(),
         timeoutPromise
-      ]);
+      ]) as any;
       
       console.log("Retrieved account:", connectedAccount);
       
-      if (connectedAccount?.address) {
+      if (connectedAccount && typeof connectedAccount === 'object' && 'address' in connectedAccount && connectedAccount.address) {
         const userData = {
           address: connectedAccount.address,
           email: "user@example.com", // This would come from the auth response
