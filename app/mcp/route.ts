@@ -30,6 +30,7 @@ function widgetMeta(widget: ContentWidget) {
 
 const handler = createMcpHandler(async (server) => {
   const html = await getAppsSdkCompatibleHtml(baseURL, "/");
+  const customPageHtml = await getAppsSdkCompatibleHtml(baseURL, "/custom-page");
 
   const contentWidget: ContentWidget = {
     id: "show_content",
@@ -39,6 +40,17 @@ const handler = createMcpHandler(async (server) => {
     invoked: "Content loaded",
     html: html,
     description: "Displays the homepage content",
+    widgetDomain: "https://nextjs.org/docs",
+  };
+
+  const customPageWidget: ContentWidget = {
+    id: "show_custom_page",
+    title: "Show Custom Page",
+    templateUri: "ui://widget/custom-page-template.html",
+    invoking: "Loading custom page...",
+    invoked: "Custom page loaded",
+    html: customPageHtml,
+    description: "Displays the custom page content",
     widgetDomain: "https://nextjs.org/docs",
   };
   server.registerResource(
@@ -69,6 +81,34 @@ const handler = createMcpHandler(async (server) => {
     })
   );
 
+  server.registerResource(
+    "custom-page-widget",
+    customPageWidget.templateUri,
+    {
+      title: customPageWidget.title,
+      description: customPageWidget.description,
+      mimeType: "text/html+skybridge",
+      _meta: {
+        "openai/widgetDescription": customPageWidget.description,
+        "openai/widgetPrefersBorder": true,
+      },
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/html+skybridge",
+          text: `<html>${customPageWidget.html}</html>`,
+          _meta: {
+            "openai/widgetDescription": customPageWidget.description,
+            "openai/widgetPrefersBorder": true,
+            "openai/widgetDomain": customPageWidget.widgetDomain,
+          },
+        },
+      ],
+    })
+  );
+
   server.registerTool(
     contentWidget.id,
     {
@@ -93,6 +133,31 @@ const handler = createMcpHandler(async (server) => {
           timestamp: new Date().toISOString(),
         },
         _meta: widgetMeta(contentWidget),
+      };
+    }
+  );
+
+  server.registerTool(
+    customPageWidget.id,
+    {
+      title: customPageWidget.title,
+      description: "Display the custom page with welcome message and navigation",
+      inputSchema: {},
+      _meta: widgetMeta(customPageWidget),
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Custom page displayed successfully",
+          },
+        ],
+        structuredContent: {
+          message: "Welcome to the custom page!",
+          timestamp: new Date().toISOString(),
+        },
+        _meta: widgetMeta(customPageWidget),
       };
     }
   );

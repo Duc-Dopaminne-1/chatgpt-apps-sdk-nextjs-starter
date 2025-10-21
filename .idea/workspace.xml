@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="3e30e88a-2684-4357-becd-4c8c04daf121" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +56,11 @@
       <option name="presentableId" value="Default" />
       <updated>1760952078264</updated>
       <workItem from="1760952079340" duration="3889000" />
-      <workItem from="1760957225648" duration="192000" />
+      <workItem from="1760957225648" duration="1803000" />
+      <workItem from="1760960585695" duration="123000" />
+      <workItem from="1760980418625" duration="4000" />
+      <workItem from="1761015151026" duration="2246000" />
+      <workItem from="1761030410838" duration="575000" />
     </task>
     <servers />
   </component>
