@@ -409,6 +409,22 @@ export default function HomePage() {
                   Clear Data
                 </button>
               </div>
+              
+              {/* Manual data extraction button */}
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      // Open extract-data page in new tab
+                      window.open('/extract-data', '_blank');
+                      setNotification("🔗 Opened data extractor. Please copy the URL from the login tab and paste it in the extractor.");
+                    }
+                  }}
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white py-1 px-2 rounded text-xs"
+                >
+                  📋 Extract Data from Login Tab
+                </button>
+              </div>
             </div>
           )}
 
