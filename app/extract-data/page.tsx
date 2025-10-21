@@ -13,59 +13,60 @@ export default function ExtractDataPage() {
       const currentUrl = url || window.location.href;
       console.log("Processing URL:", currentUrl);
 
-        // Check if this is the embedded-wallet.thirdweb.com page
-        if (currentUrl.includes('embedded-wallet.thirdweb.com')) {
-          // Extract authResult from URL
-          const url = new URL(currentUrl);
-          const urlParams = new URLSearchParams(url.search);
-          const authResult = urlParams.get('authResult');
-          
-          if (authResult) {
-            try {
-              const parsedAuthResult = JSON.parse(decodeURIComponent(authResult));
-              console.log("Parsed auth result:", parsedAuthResult);
+      // Check if this is the embedded-wallet.thirdweb.com page
+      if (currentUrl.includes('embedded-wallet.thirdweb.com')) {
+        // Extract authResult from URL
+        const urlObj = new URL(currentUrl);
+        const urlParams = new URLSearchParams(urlObj.search);
+        const authResult = urlParams.get('authResult');
+        
+        if (authResult) {
+          try {
+            const parsedAuthResult = JSON.parse(decodeURIComponent(authResult));
+            console.log("Parsed auth result:", parsedAuthResult);
 
-              // Extract user data
-              const storedToken = parsedAuthResult.storedToken;
-              if (storedToken && storedToken.authDetails) {
-                const userData = {
-                  address: storedToken.authDetails.userWalletId || "unknown",
-                  email: storedToken.authDetails.email || "unknown",
-                  name: storedToken.authDetails.email?.split('@')[0] || "Social User",
-                  provider: "social"
-                };
+            // Extract user data
+            const storedToken = parsedAuthResult.storedToken;
+            if (storedToken && storedToken.authDetails) {
+              const userData = {
+                address: storedToken.authDetails.userWalletId || "unknown",
+                email: storedToken.authDetails.email || "unknown",
+                name: storedToken.authDetails.email?.split('@')[0] || "Social User",
+                provider: "social"
+              };
 
-                console.log("Extracted user data:", userData);
-                setExtractedData(userData);
+              console.log("Extracted user data:", userData);
+              setExtractedData(userData);
 
-                // Save to localStorage
-                localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
-                setStatus("✅ Data extracted and saved to localStorage!");
+              // Save to localStorage
+              localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
+              setStatus("✅ Data extracted and saved to localStorage!");
 
-                // Try to redirect back to custom page
-                setTimeout(() => {
-                  window.location.href = '/custom-page?login=success&address=' + encodeURIComponent(userData.address) + '&provider=social';
-                }, 2000);
+              // Try to redirect back to custom page
+              setTimeout(() => {
+                window.location.href = '/custom-page?login=success&address=' + encodeURIComponent(userData.address) + '&provider=social';
+              }, 2000);
 
-              } else {
-                setStatus("❌ No auth details found in URL");
-              }
-            } catch (parseError) {
-              console.error("Failed to parse auth result:", parseError);
-              setStatus("❌ Failed to parse auth result");
+            } else {
+              setStatus("❌ No auth details found in URL");
             }
-          } else {
-            setStatus("❌ No authResult found in URL");
+          } catch (parseError) {
+            console.error("Failed to parse auth result:", parseError);
+            setStatus("❌ Failed to parse auth result");
           }
         } else {
-          setStatus("❌ Not on embedded-wallet.thirdweb.com page");
+          setStatus("❌ No authResult found in URL");
         }
-      } catch (error) {
-        console.error("Error extracting data:", error);
-        setStatus("❌ Error extracting data: " + error);
+      } else {
+        setStatus("❌ Not on embedded-wallet.thirdweb.com page");
       }
-    };
+    } catch (error) {
+      console.error("Error extracting data:", error);
+      setStatus("❌ Error extracting data: " + error);
+    }
+  };
 
+  useEffect(() => {
     extractDataFromUrl();
   }, []);
 
