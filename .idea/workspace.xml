@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="3e30e88a-2684-4357-becd-4c8c04daf121" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/app/custom-page/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/custom-page/page.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="3e30e88a-2684-4357-becd-4c8c04daf121" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

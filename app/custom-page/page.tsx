@@ -45,6 +45,28 @@ export default function HomePage() {
     }
   }, [notification]);
 
+  // Check for existing login data on component mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Check localStorage for any existing login data
+    const checkExistingLogin = () => {
+      try {
+        const existingData = localStorage.getItem('thirdweb-login-data');
+        if (existingData) {
+          const parsedData = JSON.parse(existingData);
+          console.log("Found existing login data:", parsedData);
+          setUserInfo(parsedData);
+          setNotification("✅ Found existing login data!");
+        }
+      } catch (error) {
+        console.log("No existing login data found");
+      }
+    };
+    
+    checkExistingLogin();
+  }, []);
+
   const handleConnectGoogle = async () => {
     try {
       setIsConnectingWallet(true);
@@ -117,17 +139,34 @@ export default function HomePage() {
       console.log("Getting user data after social login...");
       console.log("Button clicked successfully!");
       
-      // Try to get account from embedded wallet
-      const connectedAccount = await embeddedWallet.getAccount();
+      // Create a timeout promise to prevent infinite waiting
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: No response from wallet')), 10000); // 10 seconds timeout
+      });
+      
+      // Try to get account from embedded wallet with timeout
+      const connectedAccount = await Promise.race([
+        embeddedWallet.getAccount(),
+        timeoutPromise
+      ]);
+      
       console.log("Retrieved account:", connectedAccount);
       
       if (connectedAccount?.address) {
-        setUserInfo({
+        const userData = {
           address: connectedAccount.address,
           email: "user@example.com", // This would come from the auth response
           name: "Social User",
           provider: "social"
-        });
+        };
+        
+        setUserInfo(userData);
+        
+        // Save to localStorage for persistence
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
+        }
+        
         setNotification("✅ User data retrieved successfully!");
         console.log("User data updated successfully!");
       } else {
@@ -136,7 +175,13 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error("Failed to get user data:", error);
-      setNotification("❌ Failed to get user data. Please try logging in again.");
+      
+      // Check if it's a timeout error
+      if (error instanceof Error && error.message.includes('Timeout')) {
+        setNotification("⏰ Login timeout. Please try logging in again or check if popup was blocked.");
+      } else {
+        setNotification("❌ Failed to get user data. Please try logging in again.");
+      }
     } finally {
       setIsLoadingUserData(false);
     }
@@ -273,11 +318,27 @@ export default function HomePage() {
                 <div className={`mt-2 p-2 rounded text-xs ${
                   notification.includes('✅') 
                     ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : notification.includes('⏰')
+                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                     : 'bg-red-100 text-red-800 border border-red-200'
                 }`}>
                   {notification}
                 </div>
               )}
+              
+              {/* Clear data and retry button */}
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('thirdweb-login-data');
+                    setUserInfo(null);
+                    setNotification("🔄 Data cleared. Please try logging in again.");
+                  }
+                }}
+                className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+              >
+                Clear Data & Retry
+              </button>
             </div>
           )}
 
