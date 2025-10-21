@@ -53,8 +53,8 @@ export default function ThirdwebCallbackPage() {
           window.close();
         } else {
           console.log("No window opener, redirecting...");
-          // Fallback: redirect về trang chính với thông tin
-          window.location.href = `/?login=success&address=${account?.address}&provider=${provider}`;
+          // Fallback: redirect về custom page với thông tin
+          window.location.href = `/custom-page?login=success&address=${account?.address}&provider=${provider}`;
         }
       } catch (e) {
         console.error("Callback error:", e);
@@ -71,8 +71,8 @@ export default function ThirdwebCallbackPage() {
           window.opener.postMessage(errorMessage, "*");
           window.close();
         } else {
-          // Fallback: redirect về trang chính với error
-          window.location.href = `/?login=error&error=${encodeURIComponent(errorMessage.payload.error)}`;
+          // Fallback: redirect về custom page với error
+          window.location.href = `/custom-page?login=error&error=${encodeURIComponent(errorMessage.payload.error)}`;
         }
       }
     })();

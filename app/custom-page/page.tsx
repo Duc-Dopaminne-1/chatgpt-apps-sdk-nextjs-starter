@@ -64,7 +64,38 @@ export default function HomePage() {
       }
     };
     
+    // Check URL parameters for login success
+    const checkUrlParams = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const loginSuccess = urlParams.get('login');
+      const address = urlParams.get('address');
+      const provider = urlParams.get('provider');
+      
+      if (loginSuccess === 'success' && address) {
+        const userData = {
+          address: address,
+          email: "user@example.com",
+          name: "Social User",
+          provider: provider || "social"
+        };
+        
+        setUserInfo(userData);
+        localStorage.setItem('thirdweb-login-data', JSON.stringify(userData));
+        setNotification("✅ Login data retrieved from URL!");
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (loginSuccess === 'error') {
+        const error = urlParams.get('error');
+        setNotification(`❌ Login failed: ${error || 'Unknown error'}`);
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    
     checkExistingLogin();
+    checkUrlParams();
   }, []);
 
   const handleConnectGoogle = async () => {
@@ -138,6 +169,21 @@ export default function HomePage() {
       setNotification(null);
       console.log("Getting user data after social login...");
       console.log("Button clicked successfully!");
+      
+      // First, try to get from localStorage (in case login happened in another tab)
+      const existingData = localStorage.getItem('thirdweb-login-data');
+      if (existingData) {
+        try {
+          const parsedData = JSON.parse(existingData);
+          if (parsedData.address) {
+            setUserInfo(parsedData);
+            setNotification("✅ User data found in localStorage!");
+            return;
+          }
+        } catch (e) {
+          console.log("Failed to parse existing data");
+        }
+      }
       
       // Create a timeout promise to prevent infinite waiting
       const timeoutPromise = new Promise((_, reject) => {
@@ -326,19 +372,43 @@ export default function HomePage() {
                 </div>
               )}
               
-              {/* Clear data and retry button */}
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('thirdweb-login-data');
-                    setUserInfo(null);
-                    setNotification("🔄 Data cleared. Please try logging in again.");
-                  }
-                }}
-                className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
-              >
-                Clear Data & Retry
-              </button>
+              {/* Action buttons */}
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      const data = localStorage.getItem('thirdweb-login-data');
+                      if (data) {
+                        try {
+                          const parsed = JSON.parse(data);
+                          setUserInfo(parsed);
+                          setNotification("✅ Data loaded from localStorage!");
+                        } catch (e) {
+                          setNotification("❌ Invalid data in localStorage");
+                        }
+                      } else {
+                        setNotification("❌ No data found in localStorage");
+                      }
+                    }
+                  }}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded text-xs"
+                >
+                  Check localStorage
+                </button>
+                
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('thirdweb-login-data');
+                      setUserInfo(null);
+                      setNotification("🔄 Data cleared. Please try logging in again.");
+                    }
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+                >
+                  Clear Data
+                </button>
+              </div>
             </div>
           )}
 
