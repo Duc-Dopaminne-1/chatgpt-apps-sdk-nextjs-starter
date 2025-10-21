@@ -35,6 +35,8 @@ export default function HomePage() {
 
   // Handle fallback redirect từ callback page
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const params = new URLSearchParams(window.location.search);
     const loginStatus = params.get("login");
     
@@ -65,6 +67,8 @@ export default function HomePage() {
 
   // ✅ Fix 2: Dùng redirect callback + postMessage để "trả kết quả" về tab gốc
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const onMsg = async (e: MessageEvent) => {
       console.log("Received message:", e.data, "from origin:", e.origin);
       
@@ -297,15 +301,16 @@ export default function HomePage() {
             Debug Info
           </h3>
           <div className="text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
-            <p><strong>Window opener:</strong> {typeof window.opener !== 'undefined' ? 'Available' : 'Not available'}</p>
+            <p><strong>Window opener:</strong> {typeof window !== 'undefined' && typeof window.opener !== 'undefined' ? 'Available' : 'Not available'}</p>
             <p><strong>Current URL:</strong> {typeof window !== 'undefined' ? window.location.href : 'N/A'}</p>
-            <p><strong>User Agent:</strong> {typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'N/A'}</p>
+            <p><strong>User Agent:</strong> {typeof window !== 'undefined' && typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'N/A'}</p>
             <p><strong>Is Connecting:</strong> {isConnectingWallet ? 'Yes' : 'No'}</p>
             <p><strong>User Info:</strong> {userInfo ? JSON.stringify(userInfo, null, 2) : 'None'}</p>
           </div>
           <div className="flex gap-2 mt-2">
             <button
               onClick={() => {
+                if (typeof window === 'undefined') return;
                 console.log("Testing postMessage...");
                 window.postMessage({
                   type: "thirdweb-login-success",
@@ -323,6 +328,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => {
+                if (typeof window === 'undefined') return;
                 console.log("Testing OAuth success...");
                 window.postMessage({
                   eventType: "oauthSuccessResult",
