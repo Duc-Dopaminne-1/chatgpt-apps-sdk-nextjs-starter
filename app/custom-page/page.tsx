@@ -103,6 +103,7 @@ export default function HomePage() {
     try {
       setIsLoadingUserData(true);
       console.log("Getting user data after social login...");
+      console.log("Button clicked successfully!");
       
       // Try to get account from embedded wallet
       const connectedAccount = await embeddedWallet.getAccount();
@@ -118,11 +119,28 @@ export default function HomePage() {
         console.log("User data updated successfully!");
       } else {
         console.log("No account found. Please try logging in again.");
-        alert("No account found. Please try logging in again.");
+        // Use a more iframe-friendly notification
+        if (typeof window !== 'undefined' && window.parent !== window) {
+          // We're in an iframe, try to communicate with parent
+          window.parent.postMessage({
+            type: 'notification',
+            message: 'No account found. Please try logging in again.'
+          }, '*');
+        } else {
+          alert("No account found. Please try logging in again.");
+        }
       }
     } catch (error) {
       console.error("Failed to get user data:", error);
-      alert("Failed to get user data. Please try logging in again.");
+      // Use a more iframe-friendly notification
+      if (typeof window !== 'undefined' && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'notification',
+          message: 'Failed to get user data. Please try logging in again.'
+        }, '*');
+      } else {
+        alert("Failed to get user data. Please try logging in again.");
+      }
     } finally {
       setIsLoadingUserData(false);
     }
@@ -222,10 +240,35 @@ export default function HomePage() {
               <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
                 If you've already logged in with Google/Apple in another tab, click below to retrieve your data.
               </p>
+              
+              {/* Debug info for iframe */}
+              <div className="text-xs text-blue-600 dark:text-blue-400 mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded">
+                <p><strong>Environment:</strong> {typeof window !== 'undefined' && window.parent !== window ? 'In iframe' : 'Standalone'}</p>
+                <p><strong>Button Status:</strong> {isLoadingUserData ? 'Loading...' : 'Ready'}</p>
+              </div>
+              
               <button
-                onClick={handleGetUserData}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Button click event triggered!");
+                  handleGetUserData();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  console.log("Button mousedown event triggered!");
+                }}
+                onMouseUp={(e) => {
+                  e.preventDefault();
+                  console.log("Button mouseup event triggered!");
+                }}
                 disabled={isLoadingUserData}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white disabled:text-gray-300 font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white disabled:text-gray-300 font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                style={{
+                  pointerEvents: 'auto',
+                  touchAction: 'manipulation',
+                  userSelect: 'none'
+                }}
               >
                 {isLoadingUserData ? (
                   <>
@@ -240,6 +283,17 @@ export default function HomePage() {
                     Get My User Data
                   </>
                 )}
+              </button>
+              
+              {/* Test button for debugging */}
+              <button
+                onClick={() => {
+                  console.log("Test button clicked!");
+                  alert("Test button works!");
+                }}
+                className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+              >
+                Test Button (Debug)
               </button>
             </div>
           )}
